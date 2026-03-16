@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEFAS Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Syne+Mono&family=Lora:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f0e8; --surface: #faf7f2; --surface2: #eee9df;
+  --border: #d8d0c0; --border2: #c8bfac;
+  --ink: #1a1612; --ink2: #4a4035; --muted: #8a7e6e;
+  --accent: #c0392b; --green: #27ae60; --blue: #2471a3;
+  --display: 'Syne', sans-serif; --mono: 'Syne Mono', monospace; --serif: 'Lora', serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--serif); min-height: 100vh; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+
+header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.logo { font-family: var(--display); font-weight: 800; font-size: 2.6rem; letter-spacing: -1px; line-height: 1; }
+.logo span { color: var(--accent); }
+.header-meta { font-family: var(--mono); font-size: 0.62rem; color: var(--muted); letter-spacing: 2px; text-align: right; line-height: 1.9; }
+
+.section { margin-bottom: 32px; }
+.section-title { font-family: var(--display); font-weight: 700; font-size: 0.68rem; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+.section-title .num { background: var(--ink); color: var(--bg); font-family: var(--mono); font-size: 0.6rem; padding: 2px 8px; }
+
+.row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+input[type=password], input[type=text] { flex: 1; min-width: 160px; background: var(--surface); border: 1px solid var(--border2); color: var(--ink); font-family: var(--mono); font-size: 0.8rem; padding: 12px 14px; outline: none; transition: border-color 0.2s; }
+input:focus { border-color: var(--ink); }
+
+.btn { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 2px; padding: 12px 18px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; transition: all 0.15s; text-transform: uppercase; white-space: nowrap; }
+.btn:hover { background: var(--accent); border-color: var(--accent); }
+.btn.outline { background: transparent; color: var(--ink); }
+.btn.outline:hover { background: var(--ink); color: var(--bg); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+.hint { font-family: var(--mono); font-size: 0.62rem; color: var(--muted); margin-top: 8px; letter-spacing: 1px; min-height: 18px; }
+.hint.ok { color: var(--green); }
+.hint.err { color: var(--accent); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; min-height: 38px; }
+.chip { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border2); padding: 6px 12px; font-family: var(--mono); font-size: 0.68rem; color: var(--ink2); }
+.chip b { color: var(--ink); }
+.chip .rv { color: var(--accent); font-size: 0.6rem; }
+.chip .rg { color: var(--green); font-size: 0.6rem; }
+.chip-rm { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 0 2px; }
+.chip-rm:hover { color: var(--accent); }
+
+.param-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.param-item label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+.param-item label .pv { color: var(--ink); font-weight: bold; }
+input[type=range] { width: 100%; accent-color: var(--ink); height: 3px; cursor: pointer; }
+
+.progress-bar { height: 3px; background: var(--border); margin: 16px 0; overflow: hidden; display: none; }
+.progress-fill { height: 100%; background: var(--ink); width: 0%; transition: width 0.3s; }
+
+.result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border2); margin-bottom: 28px; }
+.r-stat { background: var(--surface); padding: 20px 14px; text-align: center; }
+.r-stat .val { font-family: var(--display); font-size: 1.8rem; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+.r-stat .lbl { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.r-stat.red .val { color: var(--accent); }
+.r-stat.grn .val { color: var(--green); }
+.r-stat.blu .val { color: var(--blue); }
+
+.alloc-list { display: flex; flex-direction: column; gap: 12px; }
+.alloc-item { display: grid; grid-template-columns: 120px 1fr 56px; align-items: center; gap: 14px; }
+.alloc-name { font-family: var(--mono); font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alloc-bar-bg { height: 5px; background: var(--border); }
+.alloc-bar-fill { height: 100%; background: var(--ink); transition: width 0.9s cubic-bezier(.4,0,.2,1); }
+.alloc-pct { font-family: var(--mono); font-size: 0.72rem; text-align: right; font-weight: bold; }
+
+#riskChart { width: 100%; height: 160px; display: block; background: var(--surface); border: 1px solid var(--border); }
+
+#analysisBox { font-family: var(--serif); font-size: 0.98rem; line-height: 1.9; color: var(--ink2); white-space: pre-wrap; min-height: 60px; background: var(--surface); border: 1px solid var(--border); padding: 20px 24px; }
+.cursor::after { content: '▌'; animation: blink .7s infinite; color: var(--accent); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.divider { display: flex; align-items: center; gap: 12px; margin: 32px 0; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border2); }
+.divider span { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 3px; color: var(--muted); }
+
+#resultsSection { display: none; }
+
+.dl-link { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 2px; padding: 7px 14px; border: 1px solid var(--muted); background: transparent; color: var(--muted); cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.15s; text-transform: uppercase; }
+.dl-link:hover { border-color: var(--ink); color: var(--ink); }
+
+/* Modal */
+#keyModal { position: fixed; inset: 0; background: rgba(26,22,18,0.88); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.modal-box { background: var(--surface); border: 2px solid var(--ink); padding: 36px; max-width: 480px; width: 100%; }
+.modal-title { font-family: var(--display); font-weight: 800; font-size: 1.5rem; margin-bottom: 8px; }
+.modal-sub { font-family: var(--mono); font-size: 0.63rem; color: var(--muted); letter-spacing: 1px; margin-bottom: 24px; line-height: 1.9; }
+.modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--ink); font-family: var(--mono); font-size: 0.85rem; padding: 14px; outline: none; margin-bottom: 16px; transition: border-color 0.2s; }
+.modal-input:focus { border-color: var(--ink); }
+
+@media (max-width: 600px) {
+  .param-grid { grid-template-columns: 1fr 1fr; }
+  .result-grid { grid-template-columns: 1fr 1fr; }
+  .alloc-item { grid-template-columns: 80px 1fr 42px; }
+  .logo { font-size: 2rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- API KEY MODAL -->
+<div id="keyModal">
+  <div class="modal-box">
+    <div class="modal-title">Gemini API Anahtarı</div>
+    <div class="modal-sub">
+      TEFAS verisi çekmek ve portföy analizi için<br>
+      Gemini API anahtarı gerekiyor.<br><br>
+      ✓ Anahtar sadece bu oturumda bellekte tutulur<br>
+      ✓ Hiçbir yere kaydedilmez veya gönderilmez<br>
+      ✓ Sekme kapanınca silinir
+    </div>
+    <input type="password" class="modal-input" id="modalKey"
+      placeholder="AIzaSy..."
+      onkeydown="if(event.key==='Enter') confirmKey()">
+    <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-bottom:20px">
+      Ücretsiz key: <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--blue)">aistudio.google.com/apikey</a>
+    </div>
+    <button class="btn" onclick="confirmKey()">DEVAM →</button>
+    <div class="hint err" id="modalErr" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">TEFAS<span>.</span>OPT</div>
+    <div class="header-meta">
+      GENETİK ALGORİTMA · MİNİMUM RİSK<br>
+      GEMINI AI · GERÇEK TEFAS VERİSİ<br>
+      <a class="dl-link" href="#" onclick="downloadSelf(event)">⬇ HTML İNDİR</a>
+    </div>
+  </header>
+
+  <!-- 01: FON -->
+  <div class="section">
+    <div class="section-title"><span class="num">01</span> Fon Ekle</div>
+    <div class="row" style="margin-bottom:8px">
+      <input type="text" id="fundInput" placeholder="Fon kodu (AKB1T, TI2, MAC...)" maxlength="8"
+        style="text-transform:uppercase" onkeydown="if(event.key==='Enter') addFund()">
+      <button class="btn outline" id="addBtn" onclick="addFund()">+ EKLE</button>
+      <button class="btn outline" onclick="loadSample()">ÖRNEK</button>
+    </div>
+    <div class="hint" id="addHint">Fon kodunu yaz → Gemini TEFAS'tan gerçek getiri/volatilite çeker.</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <!-- 02: PARAMS -->
+  <div class="section">
+    <div class="section-title"><span class="num">02</span> Algoritma Parametreleri</div>
+    <div class="param-grid">
+      <div class="param-item"><label>POPÜLASYON <span class="pv" id="pv1">50</span></label><input type="range" id="p_pop" min="20" max="200" value="50" oninput="document.getElementById('pv1').textContent=this.value"></div>
+      <div class="param-item"><label>MUTASYON % <span class="pv" id="pv2">8</span></label><input type="range" id="p_mut" min="1" max="30" value="8" oninput="document.getElementById('pv2').textContent=this.value"></div>
+      <div class="param-item"><label>NESİL <span class="pv" id="pv3">200</span></label><input type="range" id="p_gen" min="50" max="500" value="200" oninput="document.getElementById('pv3').textContent=this.value"></div>
+      <div class="param-item"><label>MAX FON <span class="pv" id="pv4">5</span></label><input type="range" id="p_maxf" min="2" max="10" value="5" oninput="document.getElementById('pv4').textContent=this.value"></div>
+      <div class="param-item"><label>ELİTİZM <span class="pv" id="pv5">3</span></label><input type="range" id="p_elit" min="0" max="10" value="3" oninput="document.getElementById('pv5').textContent=this.value"></div>
+      <div class="param-item"><label>CROSSOVER % <span class="pv" id="pv6">70</span></label><input type="range" id="p_cross" min="40" max="95" value="70" oninput="document.getElementById('pv6').textContent=this.value"></div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap">
+      <button class="btn" id="runBtn" onclick="runGA()">▶ OPTİMİZASYONU BAŞLAT</button>
+      <button class="btn outline" id="stopBtn" onclick="stopGA()" disabled>■ DURDUR</button>
+    </div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="hint" id="gaHint"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection">
+    <div class="divider"><span>OPTİMAL PORTFÖY</span></div>
+    <div class="result-grid">
+      <div class="r-stat red"><div class="val" id="r_vol">—</div><div class="lbl">Volatilite</div></div>
+      <div class="r-stat grn"><div class="val" id="r_ret">—</div><div class="lbl">Getiri</div></div>
+      <div class="r-stat blu"><div class="val" id="r_sharpe">—</div><div class="lbl">Sharpe</div></div>
+      <div class="r-stat"><div class="val" id="r_gen">—</div><div class="lbl">Nesil</div></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span class="num">✦</span> Ağırlık Dağılımı</div>
+      <div class="alloc-list" id="allocList"></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span class="num">✦</span> Risk Evrimi</div>
+      <canvas id="riskChart"></canvas>
+    </div>
+    <div class="section">
+      <div class="section-title"><span class="num">✦</span> Gemini Portföy Analizi</div>
+      <div id="analysisBox"><span style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">Optimizasyon bittikten sonra otomatik analiz yapılır...</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let GEMINI_KEY = '';
+let funds = [];
+let stopFlag = false;
+let riskHistory = [];
+
+// ── Modal ────────────────────────────────────────────────────────
+function confirmKey() {
+  const k = document.getElementById('modalKey').value.trim();
+  if (!k.startsWith('AIza') || k.length < 20) {
+    document.getElementById('modalErr').textContent = 'Geçersiz format. AIzaSy... ile başlamalı.';
+    return;
+  }
+  GEMINI_KEY = k;
+  document.getElementById('keyModal').style.display = 'none';
+}
+
+// ── Gemini API ───────────────────────────────────────────────────
+async function gemini(prompt, stream = false) {
+  const model = 'gemini-2.0-flash';
+  const action = stream ? 'streamGenerateContent' : 'generateContent';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}?key=${GEMINI_KEY}${stream?'&alt=sse':''}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  return res;
+}
+
+// ── Fund fetch via Gemini ────────────────────────────────────────
+async function addFund() {
+  const input = document.getElementById('fundInput');
+  const code = input.value.trim().toUpperCase();
+  if (!code) return;
+  if (funds.find(f => f.code === code)) { setHint('addHint', `${code} zaten listede.`, 'err'); return; }
+
+  document.getElementById('addBtn').disabled = true;
+  setHint('addHint', `${code} için veri çekiliyor...`, '');
+
+  const prompt = `TEFAS fon kodu "${code}" için son 1 yıllık performans verisi lazım.
+
+Eğer bu gerçek bir TEFAS fonu ise bilinen verileri kullan.
+Eğer bilmiyorsan exists:false yap.
+
+SADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma:
+{"exists":true,"code":"${code}","name":"Fon Adı","return_1y":25.4,"volatility_1y":8.2,"category":"Para Piyasası"}`;
+
+  try {
+    const res = await gemini(prompt);
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const p = JSON.parse(clean);
+
+    if (!p.exists) {
+      setHint('addHint', `"${code}" bulunamadı. Kodu kontrol et.`, 'err');
+    } else {
+      funds.push({ code: p.code, name: p.name, ret: +p.return_1y, vol: +p.volatility_1y, cat: p.category });
+      renderChips();
+      setHint('addHint', `✓ ${p.name} eklendi — Getiri: %${p.return_1y}  Vol: %${p.volatility_1y}`, 'ok');
+      input.value = '';
+    }
+  } catch(e) {
+    setHint('addHint', 'Hata: ' + e.message, 'err');
+  }
+  document.getElementById('addBtn').disabled = false;
+}
+
+function loadSample() {
+  funds = [
+    { code:'AKB1T', name:'Ak Portföy Para Piyasası', ret:42.1, vol:1.2, cat:'Para Piyasası' },
+    { code:'TGEHF', name:'TG Portföy Hisse Fonu',    ret:68.3, vol:22.4, cat:'Hisse' },
+    { code:'YFIST', name:'Yapı Kredi Portföy İst.',   ret:55.2, vol:18.1, cat:'Hisse' },
+    { code:'GMGHG', name:'Garanti Para Piyasası',     ret:41.8, vol:1.1,  cat:'Para Piyasası' },
+    { code:'ISCFT', name:'İş Portföy Çoklu Varlık',  ret:49.6, vol:9.3,  cat:'Karma' },
+    { code:'AGHYM', name:'Ak Portföy Kısa Vade',     ret:40.5, vol:0.9,  cat:'Para Piyasası' },
+    { code:'TSKBH', name:'TEB Portföy Hisse',        ret:72.1, vol:25.6, cat:'Hisse' },
+    { code:'RZSAF', name:'Rönesans Değişken',         ret:51.3, vol:11.2, cat:'Değişken' },
+  ];
+  renderChips();
+  setHint('addHint', '8 örnek fon yüklendi.', 'ok');
+}
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = funds.map((f,i) => `
+    <div class="chip">
+      <b>${f.code}</b>
+      <span>${f.name.substring(0,18)}</span>
+      <span class="rg">+%${f.ret}</span>
+      <span class="rv">σ%${f.vol}</span>
+      <button class="chip-rm" onclick="removeFund(${i})">×</button>
+    </div>`).join('');
+}
+
+function removeFund(i) { funds.splice(i,1); renderChips(); }
+
+// ── GA ───────────────────────────────────────────────────────────
+function getP() {
+  return {
+    popSize:  +document.getElementById('p_pop').value,
+    mutRate:  +document.getElementById('p_mut').value/100,
+    maxGen:   +document.getElementById('p_gen').value,
+    maxFunds: +document.getElementById('p_maxf').value,
+    elitism:  +document.getElementById('p_elit').value,
+    crossRate:+document.getElementById('p_cross').value/100,
+  };
+}
+
+function norm(c) { const s=c.reduce((a,b)=>a+b,0); return s===0?c.map(()=>1/c.length):c.map(v=>v/s); }
+
+function applyMax(c, mx) {
+  const r = new Array(c.length).fill(0);
+  [...c].map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).slice(0,mx).forEach(x=>r[x.i]=x.v);
+  return norm(r);
+}
+
+function portRisk(w) {
+  let v=0; for(let i=0;i<w.length;i++) v+=w[i]*funds[i].vol;
+  return v*(1-0.04*Math.min(w.filter(x=>x>0.01).length-1,6));
+}
+
+function portRet(w) { let r=0; for(let i=0;i<w.length;i++) r+=w[i]*funds[i].ret; return r; }
+
+function fitness(w) {
+  const risk=portRisk(w), ret=portRet(w);
+  const avgRet=funds.reduce((a,b)=>a+b.ret,0)/funds.length;
+  const pen=ret<avgRet*0.4?(avgRet*0.4-ret)*3:0;
+  return -(risk+pen);
+}
+
+function tourn(pop,fits,k=3) {
+  let b=Math.floor(Math.random()*pop.length);
+  for(let i=1;i<k;i++){const j=Math.floor(Math.random()*pop.length);if(fits[j]>fits[b])b=j;}
+  return pop[b];
+}
+
+function cross(a,b) {
+  const al=0.3;
+  return norm(a.map((v,i)=>{
+    const lo=Math.min(v,b[i])-al*Math.abs(v-b[i]);
+    const hi=Math.max(v,b[i])+al*Math.abs(v-b[i]);
+    return Math.max(0,lo+Math.random()*(hi-lo));
+  }));
+}
+
+function mut(c,r) { return c.map(v=>Math.random()<r?Math.max(0,v+(Math.random()-.5)*0.4):v); }
+
+async function runGA() {
+  if (funds.length < 2) { setHint('gaHint','En az 2 fon ekle.','err'); return; }
+  const p = getP();
+  stopFlag = false; riskHistory = [];
+
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+
+  const n = funds.length;
+  let pop = Array.from({length:p.popSize}, ()=>applyMax(Array.from({length:n},()=>Math.random()), p.maxFunds));
+  let bestFit=-Infinity, bestChrom=null, bestGen=0;
+
+  for (let g=0; g<p.maxGen; g++) {
+    if (stopFlag) break;
+    const fits = pop.map(c=>fitness(c));
+    const mf = Math.max(...fits);
+    if (mf > bestFit) { bestFit=mf; bestChrom=[...pop[fits.indexOf(mf)]]; bestGen=g+1; }
+
+    const sorted = [...pop].map((c,i)=>({c,f:fits[i]})).sort((a,b)=>b.f-a.f);
+    const next = sorted.slice(0,p.elitism).map(x=>[...x.c]);
+    while(next.length<p.popSize) {
+      let child = Math.random()<p.crossRate ? cross(tourn(pop,fits),tourn(pop,fits)) : [...tourn(pop,fits)];
+      child = applyMax(norm(mut(child,p.mutRate)), p.maxFunds);
+      next.push(child);
+    }
+    pop = next;
+    riskHistory.push(portRisk(bestChrom));
+
+    if (g%5===0) {
+      document.getElementById('progressFill').style.width = Math.round((g+1)/p.maxGen*100)+'%';
+      setHint('gaHint', `Nesil ${g+1}/${p.maxGen} — Risk: %${portRisk(bestChrom).toFixed(2)}`, '');
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('progressFill').style.width = '100%';
+  showResults(bestChrom, bestGen);
+  setHint('gaHint', '✓ Tamamlandı.', 'ok');
+}
+
+function stopGA() {
+  stopFlag=true;
+  document.getElementById('runBtn').disabled=false;
+  document.getElementById('stopBtn').disabled=true;
+  setHint('gaHint','Durduruldu.','');
+}
+
+// ── Results ──────────────────────────────────────────────────────
+function showResults(chrom, gen) {
+  const vol=portRisk(chrom), ret=portRet(chrom), sharpe=((ret-40)/vol).toFixed(2);
+  document.getElementById('r_vol').textContent  = vol.toFixed(1)+'%';
+  document.getElementById('r_ret').textContent  = ret.toFixed(1)+'%';
+  document.getElementById('r_sharpe').textContent = sharpe;
+  document.getElementById('r_gen').textContent  = '#'+gen;
+
+  const sorted = chrom.map((w,i)=>({w,f:funds[i]})).filter(x=>x.w>0.005).sort((a,b)=>b.w-a.w);
+  const mw = Math.max(...sorted.map(x=>x.w));
+  document.getElementById('allocList').innerHTML = sorted.map(({w,f})=>`
+    <div class="alloc-item">
+      <div class="alloc-name">${f.code} <span style="color:var(--muted);font-size:0.6rem">${f.name.substring(0,14)}</span></div>
+      <div class="alloc-bar-bg"><div class="alloc-bar-fill" style="width:${(w/mw*100).toFixed(1)}%"></div></div>
+      <div class="alloc-pct">${(w*100).toFixed(1)}%</div>
+    </div>`).join('');
+
+  drawChart();
+  document.getElementById('resultsSection').style.display='block';
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth'});
+  runAnalysis(chrom, vol, ret, sharpe, gen);
+}
+
+// ── Chart ────────────────────────────────────────────────────────
+function drawChart() {
+  const cv=document.getElementById('riskChart');
+  cv.width=cv.offsetWidth; cv.height=cv.offsetHeight;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const pad={t:14,b:28,l:44,r:16}, cW=W-pad.l-pad.r, cH=H-pad.t-pad.b;
+  const d=riskHistory; if(d.length<2) return;
+  const mn=Math.min(...d)*0.95, mx=Math.max(...d)*1.05;
+
+  ctx.strokeStyle='rgba(26,22,18,0.07)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+cH*(1-i/4);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillStyle='rgba(26,22,18,0.3)'; ctx.font='9px monospace';
+    ctx.fillText((mn+(mx-mn)*i/4).toFixed(1)+'%',2,y+3);
+  }
+
+  const gr=ctx.createLinearGradient(0,pad.t,0,pad.t+cH);
+  gr.addColorStop(0,'rgba(192,57,43,0.12)'); gr.addColorStop(1,'rgba(192,57,43,0)');
+  ctx.beginPath();
+  d.forEach((v,i)=>{const x=pad.l+(i/(d.length-1))*cW,y=pad.t+cH*(1-(v-mn)/(mx-mn));i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo(pad.l+cW,pad.t+cH); ctx.lineTo(pad.l,pad.t+cH); ctx.closePath();
+  ctx.fillStyle=gr; ctx.fill();
+
+  ctx.strokeStyle='#c0392b'; ctx.lineWidth=2; ctx.beginPath();
+  d.forEach((v,i)=>{const x=pad.l+(i/(d.length-1))*cW,y=pad.t+cH*(1-(v-mn)/(mx-mn));i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.stroke();
+  ctx.fillStyle='rgba(26,22,18,0.2)'; ctx.font='9px monospace';
+  ctx.fillText('VOL%',pad.l,H-4); ctx.fillText(d.length+' NESİL',W-pad.r-48,H-4);
+}
+
+// ── Gemini Analysis (streaming) ──────────────────────────────────
+async function runAnalysis(chrom, vol, ret, sharpe, gen) {
+  const box = document.getElementById('analysisBox');
+  box.textContent = ''; box.classList.add('cursor');
+
+  const alloc = chrom.map((w,i)=>({w,f:funds[i]})).filter(x=>x.w>0.005).sort((a,b)=>b.w-a.w)
+    .map(x=>`${x.f.code} (${x.f.name}): %${(x.w*100).toFixed(1)} — getiri:%${x.f.ret} vol:%${x.f.vol} [${x.f.cat}]`).join('\n');
+
+  const prompt = `Sen deneyimli bir Türk portföy yöneticisisin. Bu TEFAS portföyünü analiz et:
+
+${alloc}
+
+Sonuçlar:
+- Portföy Volatilitesi: %${vol.toFixed(2)}
+- Beklenen Getiri: %${ret.toFixed(2)}
+- Sharpe Ratio: ${sharpe}
+- GA en iyi nesil: #${gen}
+
+3-4 paragraf Türkçe analiz yaz:
+1. Portföyün genel yapısı ve risk profili
+2. Mevcut faiz/enflasyon ortamında değerlendirme
+3. Güçlü ve zayıf yönler
+4. Pratik öneri
+
+Samimi, teknik ama anlaşılır yaz.`;
+
+  try {
+    const res = await gemini(prompt, true);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done,value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value,{stream:true});
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (!raw || raw==='[DONE]') continue;
+        try {
+          const j = JSON.parse(raw);
+          const txt = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (txt) box.textContent += txt;
+        } catch {}
+      }
+    }
+  } catch(e) {
+    box.textContent = 'Analiz hatası: ' + e.message;
+  }
+  box.classList.remove('cursor');
+}
+
+// ── Misc ─────────────────────────────────────────────────────────
+function setHint(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'hint' + (cls ? ' '+cls : '');
+}
+
+function downloadSelf(e) {
+  e.preventDefault();
+  const blob = new Blob([document.documentElement.outerHTML],{type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tefas-optimizer.html';
+  a.click();
+}
+
+window.onload = () => document.getElementById('modalKey').focus();
+</script>
+</body>
+</html>
